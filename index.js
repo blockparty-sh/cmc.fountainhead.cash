@@ -51,9 +51,7 @@ const slpdb_servers = [
 ];
 
 let circulatingsupply_cached = new Map();
-let totalsupply_cached = new Map();
-
-app.get('/:tokenIdHex/circulatingsupply', function (req, res) {
+app.get('/:tokenIdHex/totalsupply', function (req, res) {
   const tokenIdHex = req.params["tokenIdHex"];
   if (circulatingsupply_cached.has(tokenIdHex)) {
     res.send(circulatingsupply_cached.get(tokenIdHex));
@@ -95,49 +93,5 @@ app.get('/:tokenIdHex/circulatingsupply', function (req, res) {
     return;
   });
 });
-
-app.get('/:tokenIdHex/totalsupply', function (req, res) {
-  const tokenIdHex = req.params["tokenIdHex"];
-  if (totalsupply_cached.has(tokenIdHex)) {
-    res.send(totalsupply_cached.get(tokenIdHex));
-    return;
-  }
-
-  const reqs = slpdb_servers.map((api_server) => slpdb.query(slpdb.getToken(tokenIdHex), api_server));
-  Promise.all(reqs)
-  .then((resps) => {
-    let total_supply_results = [];
-
-    let cache = false;
-    for (const data of resps) {
-      if (data.t.length == 0) {
-        continue;
-      }
-
-      const token = data.t[0];
-      if (token.mintBatonUtxo === "") {
-        cache = true;
-      }
-      total_supply_results.push(token.tokenStats.qty_token_minted);
-    }
-
-    if (total_supply_results.length == 0) {
-      res.send("0");
-      return;
-    }
-
-    const median_total_supply = total_supply_results.sort((a, b) => a-b)[
-      Math.floor(total_supply_results.length/2)
-    ];
-
-    if (cache) {
-      totalsupply_cached.set(tokenIdHex, median_total_supply);
-    }
-
-    res.send(median_total_supply);
-    return;
-  });
-});
-
 
 app.listen(port, () => console.log(`CMC provider listening on port ${port}!`))
